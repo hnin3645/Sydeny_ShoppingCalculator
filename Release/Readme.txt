@@ -10,10 +10,6 @@ user can easily master the calculator after read several simple instructions. Th
 intergrated in the program which are ver.qua and ver.tri, the first version is for four users and the 
 second is for three, a two-user calculator is intergrated inside in both versions in term of more complicated 
 conditions.
-
-There are currently two versions of Shopping Amount Calculators which are V1.2.0 and V1.3.0, the early 
-versions are missing. The program is not open sourced which means user cannot change anything outside the 
-allowed areas.
 ----------------
 
 About Shopping Calculator (SCR):
