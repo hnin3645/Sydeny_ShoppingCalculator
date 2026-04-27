@@ -17,7 +17,7 @@ let lastProductName = "";
 [...document.querySelectorAll('div.sub-heading.items')].forEach(row => {
   const text = row.querySelector('p')?.innerText.replace(/\s+/g, ' ').trim() || "";
   const priceText = row.querySelector('span.text-right.price')?.innerText.trim() || "";
-  const amount = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+  const amount = parseFloat(priceText.replace(/[^0-9.-]/g, ''));
 
   if (!text) return;
 
@@ -529,6 +529,9 @@ class ShoppingCalculator:
             quantity_info = str(row.get("quantityInfo") or row.get("quantity_info") or "").strip()
             price_text = str(row.get("priceText") or row.get("price_text") or "").strip()
             amount = self.parse_imported_price(row.get("price"), price_text)
+            is_discount = self.is_discount_invoice_row(item_name, quantity_info, amount)
+            if is_discount:
+                amount = -abs(amount)
 
             invoice_rows.append(
                 {
@@ -536,25 +539,39 @@ class ShoppingCalculator:
                     "quantity_info": quantity_info,
                     "price": amount,
                     "price_text": price_text,
+                    "is_discount": is_discount,
                 }
             )
 
         return invoice_rows
 
+    @staticmethod
+    def is_discount_invoice_row(item_name: str, quantity_info: str, amount: float) -> bool:
+        text = item_name.strip().casefold()
+        discount_label = (
+            text.startswith("buy ")
+            or text.startswith("save ")
+            or "discount" in text
+            or "coupon" in text
+            or "promotion" in text
+        )
+        return amount < 0 or (discount_label and not quantity_info.strip())
+
     def parse_imported_price(self, price_value: object, price_text: str) -> float:
-        source = price_value
-        if source is None or source == "":
-            source = price_text
+        source = price_text.strip() if price_text.strip() else price_value
 
         if isinstance(source, (int, float)):
             amount = float(source)
         else:
-            price_string = str(source).strip()
-            cleaned = "".join(char for char in price_string if char.isdigit() or char in ".-")
+            price_string = str(source).strip().replace("−", "-").replace("–", "-")
+            is_negative = "-" in price_string or (price_string.startswith("(") and price_string.endswith(")"))
+            cleaned = "".join(char for char in price_string if char.isdigit() or char == ".")
             amount = self.parse_amount(cleaned)
+            if is_negative:
+                amount = -abs(amount)
 
-        if amount < 0:
-            raise ValueError("商品金额不能小于 0。")
+        if not math.isfinite(amount):
+            raise ValueError("商品金额必须是有效数字。")
         return amount
 
     def show_invoice_allocator(self, invoice_rows: list[dict[str, object]], parent: tk.Misc) -> None:
@@ -621,10 +638,16 @@ class ShoppingCalculator:
 
         def refresh_item() -> None:
             row = current_row()
+            is_discount = bool(row.get("is_discount"))
             status_var.set(f"第 {current_index + 1} / {len(invoice_rows)} 个商品")
-            item_var.set(str(row["item"]))
+            item_name = str(row["item"])
+            item_var.set(f"折扣：{item_name}" if is_discount and not item_name.startswith("折扣") else item_name)
             quantity = str(row.get("quantity_info") or "")
-            quantity_var.set(f"数量信息：{quantity}" if quantity else "数量信息：无")
+            if is_discount:
+                discount_note = "折扣行：请分配给享受该促销的人"
+                quantity_var.set(f"{discount_note}；数量信息：{quantity}" if quantity else discount_note)
+            else:
+                quantity_var.set(f"数量信息：{quantity}" if quantity else "数量信息：无")
 
             price = float(row["price"])
             price_text = str(row.get("price_text") or "")
@@ -670,11 +693,14 @@ class ShoppingCalculator:
                 return
 
             row = current_row()
+            item_name = str(row["item"])
+            if row.get("is_discount") and not item_name.startswith("折扣"):
+                item_name = f"折扣：{item_name}"
             self.entries.append(
                 ExpenseEntry.create(
                     assigned_people,
                     float(row["price"]),
-                    str(row["item"]),
+                    item_name,
                     str(row.get("quantity_info") or ""),
                     str(row.get("price_text") or ""),
                 )

@@ -12,6 +12,7 @@
 2. 控制台会把商品 JSON 复制到剪贴板。
 3. 回到程序，点击“导入发票JSON”，粘贴 JSON 后开始逐个商品分配。
 4. 分配时可以全选、清空选择、跳过商品，或“添加并下一项”。
+5. 促销折扣行（例如 BUY 2 for $5.50）会显示为负数折扣，请分配给享受该促销的人。
 
 用户管理
 1. 程序默认人员为 msc、nhy、wpq、zyf。
@@ -31,3 +32,4 @@ C:\Users\64648\AppData\Local\Programs\Python\Python312\python.exe -m PyInstaller
 2026-04-27
 - 使用 shop_NEW.py 重新生成 dist\shop.exe。
 - 更新 readme.txt，补充运行、发票导入、用户管理和打包说明。
+- 修复发票导入中促销折扣行被当成正数商品的问题。
